@@ -56,24 +56,28 @@ python pcap_signatures.py \
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--pcap` | PCAP file path (required) | - |
+| `--pcap` | Path to PCAP file (required) | - |
 | `--syn-threshold` | SYN count threshold for flood detection | 200 |
 
-## Detections
+## Detected Patterns
 
-### SYN Flood Attacks
+### 1. SYN Flood Attacks
 
-Detects potential SYN flood attacks:
+Detects potential SYN flood (DDoS) attacks:
 - **Pattern**: High number of SYN packets with low SYN/ACK ratio
 - **Threshold**: Configurable (default: 200 SYN packets)
 - **Ratio**: SYN/ACK ratio < 20% indicates potential flood
+- **Severity**: High
+- **Action**: Investigate source IPs, implement rate limiting
 
-### DNS Exfiltration
+### 2. DNS Exfiltration
 
-Detects suspicious DNS queries:
-- **Long Queries**: DNS queries longer than 80 characters
-- **TXT Records**: DNS TXT record queries (common exfiltration method)
-- **Pattern**: Unusual DNS query patterns
+Detects potential DNS-based data exfiltration:
+- **Pattern**: Unusually long DNS queries or TXT record queries
+- **Threshold**: Query length > 80 characters
+- **Type**: TXT record queries (type 16)
+- **Severity**: Medium-High
+- **Action**: Investigate DNS queries, monitor DNS traffic
 
 ## Output Format
 
@@ -88,7 +92,7 @@ Detects suspicious DNS queries:
   ],
   "dns_long_or_txt_queries": [
     "very-long-suspicious-domain-name.example.com",
-    "exfil-data.example.com"
+    "data-exfiltration-domain.txt.example.com"
   ]
 }
 ```
@@ -99,14 +103,13 @@ Detects suspicious DNS queries:
 
 ```bash
 # Analyze PCAP file
-python pcap_signatures.py \
-  --pcap network_capture.pcap
+python pcap_signatures.py --pcap network_capture.pcap
 ```
 
 ### Example 2: Custom Threshold
 
 ```bash
-# Use custom SYN threshold
+# Use higher threshold for SYN flood detection
 python pcap_signatures.py \
   --pcap network_capture.pcap \
   --syn-threshold 1000
@@ -114,17 +117,16 @@ python pcap_signatures.py \
 
 ## Use Cases
 
-- **Security Monitoring**: Detect network attacks in PCAP files
-- **Incident Response**: Analyze network traffic during incidents
-- **Educational Purposes**: Learn about network attack signatures
-- **Threat Detection**: Identify suspicious network patterns
+- **Network Security**: Detect attacks in network traffic
+- **Incident Response**: Analyze captured network traffic
+- **Threat Detection**: Identify suspicious patterns
+- **Educational Purposes**: Learn about network attacks
 
 ## Legal Disclaimer
 
 ⚠️ **IMPORTANT**: This tool is for authorized security analysis and educational purposes only.
 
 - Only analyze PCAP files you own or have explicit written authorization to analyze
-- Respect privacy and data protection regulations
 - Follow responsible disclosure practices
 - Comply with all applicable laws and regulations
 

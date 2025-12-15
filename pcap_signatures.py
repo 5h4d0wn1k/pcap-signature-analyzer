@@ -11,14 +11,30 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
+from typing import Dict
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="PCAP signature checks (lab/demo).")
-    parser.add_argument("--pcap", required=True, help="PCAP file path.")
-    parser.add_argument("--syn-threshold", type=int, default=200, help="SYN count threshold.")
-    args = parser.parse_args()
-
+def analyze_pcap(pcap_path: str, syn_threshold: int = 200) -> Dict[str, object]:
+    """
+    Analyze PCAP file for security signatures.
+    
+    Detects:
+    - SYN flood attacks (high SYN count with low SYN/ACK ratio)
+    - DNS exfiltration attempts (long queries or TXT records)
+    
+    Args:
+        pcap_path: Path to PCAP file to analyze.
+        syn_threshold: Minimum SYN count to flag as potential flood.
+        
+    Returns:
+        Dictionary containing:
+        - syn_flood_suspects: List of dicts with src IP, syn count, synack count
+        - dns_long_or_txt_queries: List of suspicious DNS query names
+        
+    Raises:
+        ImportError: If scapy is not installed.
+        FileNotFoundError: If PCAP file does not exist.
+    """
     try:
         from scapy.all import DNS, DNSQR, IP, TCP, rdpcap  # type: ignore
     except Exception:
@@ -29,7 +45,7 @@ def main() -> None:
     synack_counts: Counter[str] = Counter()
     dns_suspect: list[str] = []
 
-    packets = rdpcap(args.pcap)
+    packets = rdpcap(pcap_path)
     for pkt in packets:
         if TCP in pkt and IP in pkt:
             flags = pkt[TCP].flags
@@ -46,13 +62,23 @@ def main() -> None:
     syn_findings = [
         {"src": src, "syn": syn_counts[src], "synack": synack_counts.get(src, 0)}
         for src, count in syn_counts.items()
-        if count >= args.syn_threshold and synack_counts.get(src, 0) < count // 5
+        if count >= syn_threshold and synack_counts.get(src, 0) < count // 5
     ]
 
     report = {
         "syn_flood_suspects": syn_findings,
         "dns_long_or_txt_queries": dns_suspect[:50],
     }
+    return report
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="PCAP signature checks (lab/demo).")
+    parser.add_argument("--pcap", required=True, help="PCAP file path.")
+    parser.add_argument("--syn-threshold", type=int, default=200, help="SYN count threshold.")
+    args = parser.parse_args()
+
+    report = analyze_pcap(args.pcap, args.syn_threshold)
     print(report)
 
 
